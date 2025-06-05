@@ -25,7 +25,7 @@ typedef struct ThreadNode {
     pthread_t thread;
     ResourceId waiting_for; // Resource this thread is waiting for
     ResourceList* holding; // A list of resources this thread currently holds.
-    ThreadNode* next;
+    struct ThreadNode* next;
 } ThreadNode;
 
 // ResourceNode represents a resource node in the graph.
@@ -35,5 +35,9 @@ typedef struct ResourceNode {
     struct ResourceNode* next;
 } ResourceNode;
 
-static ThreadNode* thread_list_head = NULL;
+static  ThreadNode* thread_list_head = NULL;
 static pthread_spinlock_t graph_lock;
+
+void init_wfg();
+
+ThreadNode* get_or_create_thread(pthread_t tid);

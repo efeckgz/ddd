@@ -1,4 +1,5 @@
 #include "../lib/symbols.h"
+#include "../lib/wfg.h"
 // #include <cerrno>
 #include <pthread.h>
 #include <stdio.h>
@@ -44,6 +45,9 @@ static void resolve_real_symbols() {
             exit(1);
         }
     }
+
+    // After capturing all the symbols initialize the wait for graph.
+    init_wfg();
 }
 
 int pthread_mutex_lock(pthread_mutex_t* mutex) {
