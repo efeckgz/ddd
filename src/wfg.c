@@ -43,11 +43,11 @@ static ResourceNode *get_or_create_resource(ResourceId rid)
 /* ------------------------------------------------- */
 ThreadNode *get_or_create_thread(pthread_t tid)
 {
-    pthread_spin_lock(&graph_lock);
+    // pthread_spin_lock(&graph_lock);
 
     for (ThreadNode *c = thread_list_head; c; c = c->next)
         if (pthread_equal(c->thread, tid)) {
-            pthread_spin_unlock(&graph_lock);
+            // pthread_spin_unlock(&graph_lock);
             return c;
         }
 
@@ -57,7 +57,7 @@ ThreadNode *get_or_create_thread(pthread_t tid)
     n->next = thread_list_head;
     thread_list_head = n;
 
-    pthread_spin_unlock(&graph_lock);
+    // pthread_spin_unlock(&graph_lock);
     return n;
 }
 
