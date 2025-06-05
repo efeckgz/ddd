@@ -176,3 +176,65 @@ void clear_thread_owns_semaphore(pthread_t tid, sem_t *s)
 
     pthread_spin_unlock(&graph_lock);
 }
+/* =================================================
+ *                CYCLE DETECTION
+ * ================================================= */
+static int check_cycle_dfs(ThreadNode *t,
+                           ThreadNode **stack,
+                           size_t depth)
+{
+    /* already on recursion stack ⇒ cycle */
+    for (size_t i = 0; i < depth; ++i)
+        if (stack[i] == t)
+            return 1;
+
+    stack[depth] = t;                         /* push */
+
+    /* follow edge: thread ─► waiting_for ─► owner */
+    if (t->waiting_for.type != -1) {
+        ResourceNode *r = resource_list_head;
+        while (r) {
+            if (resource_id_equal(r->id, t->waiting_for)) {
+                if (r->owner != 0) {
+                    ThreadNode *owner = thread_list_head;
+                    while (owner) {
+                        if (pthread_equal(owner->thread, r->owner)) {
+                            if (check_cycle_dfs(owner, stack, depth + 1))
+                                return 1;
+                            break;
+                        }
+                        owner = owner->next;
+                    }
+                }
+                break;
+            }
+            r = r->next;
+        }
+    }
+    /* pop */
+    return 0;
+}
+
+int check_for_deadlock(pthread_t tid)
+{
+    /* take a consistent snapshot under the spin-lock */
+    pthread_spin_lock(&graph_lock);
+
+    ThreadNode *start = thread_list_head;
+    while (start && !pthread_equal(start->thread, tid))
+        start = start->next;
+
+    if (!start) {                     /* shouldn’t happen */
+        pthread_spin_unlock(&graph_lock);
+        return 0;
+    }
+
+    /* recursion stack – bounded by #threads in graph */
+    /* (graph is small; we can allocate on the stack)  */
+    ThreadNode *stack[256];           /* adjust if you expect >256 threads */
+
+    int cycle = check_cycle_dfs(start, stack, 0);
+
+    pthread_spin_unlock(&graph_lock);
+    return cycle;
+}
