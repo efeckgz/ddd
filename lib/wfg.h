@@ -40,4 +40,19 @@ static pthread_spinlock_t graph_lock;
 
 void init_wfg();
 
+
+// Update the WFG to indicate a thread is waiting on a mutex.
+void record_thread_waiting_on_mutex(pthread_t thread, pthread_mutex_t* mutex);
+
+// Update the WFG to indicate a thread owns a mutex.
+void record_thread_owns_mutex(pthread_t thread, pthread_mutex_t* mutex);
+
+void clear_thread_owns_mutex(pthread_t thread, pthread_mutex_t* mutex);
+
+void record_thread_waiting_on_semaphore(pthread_t thread);
+
+// Update the WFG to indiacate a thread has stopped waiting on a mutex.
+void clear_thread_waiting(pthread_t thread);
+
+
 ThreadNode* get_or_create_thread(pthread_t tid);
