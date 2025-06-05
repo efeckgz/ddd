@@ -4,7 +4,7 @@
 #define _GNU_SOURCE           /* dlsym, RTLD_NEXT, spin-locks visible  */
 
 #include "../lib/wfg.h"       /* graph helpers + init_wfg()            */
-#include "lib/symbols.h"      /* public overrides (pthread_*, sem_*)   */
+#include "../lib/symbols.h"      /* public overrides (pthread_*, sem_*)   */
 
 #include <dlfcn.h>
 #include <errno.h>
