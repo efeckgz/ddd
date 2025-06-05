@@ -1,4 +1,4 @@
-#include "lib/symbols.h"
+#include "../lib/symbols.h"
 // #include <cerrno>
 #include <pthread.h>
 #include <stdio.h>
