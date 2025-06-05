@@ -34,3 +34,6 @@ typedef struct ResourceNode {
     pthread_t owner;
     struct ResourceNode* next;
 } ResourceNode;
+
+static ThreadNode* thread_list_head = NULL;
+static pthread_spinlock_t graph_lock;
