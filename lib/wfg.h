@@ -1,36 +1,59 @@
+#ifndef WFG_H
+#define WFG_H
+
+#define _GNU_SOURCE          /* makes spin-lock APIs visible */
+
 #include <stdint.h>
 #include <pthread.h>
+#include <semaphore.h>
 
-// Enum to distinguish the two different types of resources.
+/* ---------- resource kinds ---------- */
 typedef enum {
     RESOURCE_MUTEX,
     RESOURCE_SEMAPHORE
 } ResourceType;
 
-// ResourceId represents a resource in the WFG. A resource is its pointer and its type.
+/* ---------- resource identity ---------- */
 typedef struct {
-    uintptr_t resource_ptr; // Either a pthread_mutex_t* or sem_t*
-    ResourceType type;
+    uintptr_t   resource_ptr;   /* pointer value of mutex or semaphore   */
+    ResourceType type;          /* which kind                            */
 } ResourceId;
 
-// ResourceList is a linked list of resources. Each ThreadNode has a list of resources that it holds.
+/* ---------- linked-list node for “resources held” ---------- */
 typedef struct ResourceList {
-    ResourceId id;
-    struct ResourceList* next;
+    ResourceId             id;
+    struct ResourceList   *next;
 } ResourceList;
 
-// ThreadNode represents a thread node in the graph.
-// A thread can hold many resources, and can be waiting for one resource at a time.
+/* ---------- graph vertices ---------- */
 typedef struct ThreadNode {
-    pthread_t thread;
-    ResourceId waiting_for; // Resource this thread is waiting for
-    ResourceList* holding; // A list of resources this thread currently holds.
-    ThreadNode* next;
+    pthread_t      thread;        /* thread id                            */
+    ResourceId     waiting_for;   /* resource currently awaited, or -1    */
+    ResourceList  *holding;       /* linked list of owned resources       */
+    struct ThreadNode *next;      /* singly-linked list of thread nodes   */
 } ThreadNode;
 
-// ResourceNode represents a resource node in the graph.
 typedef struct ResourceNode {
-    ResourceId id;
-    pthread_t owner;
-    struct ResourceNode* next;
+    ResourceId      id;           /* pointer + type                       */
+    pthread_t       owner;        /* 0 if unowned                         */
+    struct ResourceNode *next;    /* singly-linked list of resource nodes */
 } ResourceNode;
+
+void init_wfg(void);
+/* create / fetch the ThreadNode for tid */
+ThreadNode *get_or_create_thread(pthread_t tid);
+/* clear the “waiting_for” edge for tid */
+void clear_thread_waiting(pthread_t tid);
+/* ---- mutex helpers ---- */
+void record_thread_waiting_on_mutex(pthread_t tid, pthread_mutex_t *mutex);
+void record_thread_owns_mutex   (pthread_t tid, pthread_mutex_t *mutex);
+void clear_thread_owns_mutex    (pthread_t tid, pthread_mutex_t *mutex);
+/* ---- semaphore helpers ---- */
+void record_thread_waiting_on_semaphore(pthread_t tid, sem_t *sem);
+void record_thread_owns_semaphore   (pthread_t tid, sem_t *sem);
+void clear_thread_owns_semaphore    (pthread_t tid, sem_t *sem);
+
+/* ---- cycle detection ---- */
+int check_for_deadlock(pthread_t tid);
+
+#endif /* WFG_H */

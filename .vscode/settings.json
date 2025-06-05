@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "dlfcn.h": "c",
+        "pthread.h": "c"
+    }
+}
