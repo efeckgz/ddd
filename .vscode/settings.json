@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "dlfcn.h": "c",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "symbols.h": "c"
     }
 }

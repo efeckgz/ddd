@@ -1,10 +1,7 @@
-/* -------------------------------------------------
- *  src/symbols.c – Interposition layer
- * ------------------------------------------------- */
-#define _GNU_SOURCE           /* dlsym, RTLD_NEXT, spin-locks visible  */
+#define _GNU_SOURCE           
 
-#include "../lib/wfg.h"       /* graph helpers + init_wfg()            */
-#include "../lib/symbols.h"      /* public overrides (pthread_*, sem_*)   */
+#include "../lib/wfg.h"       //graph helpers
+#include "../lib/symbols.h"  //function prototypes
 
 #include <dlfcn.h>
 #include <errno.h>
@@ -14,20 +11,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ---------- real libc symbols (function-pointer variables) ---------- */
+//function pointers to the real libc functions
 static int (*real_pthread_mutex_lock)  (pthread_mutex_t *)        = NULL;
 static int (*real_pthread_mutex_unlock)(pthread_mutex_t *)        = NULL;
 static int (*real_sem_wait)            (sem_t *)                  = NULL;
 static int (*real_sem_post)            (sem_t *)                  = NULL;
 
-/* ------------------------------------------------- */
-/*  one-time initialisation of both WFG + real funcs */
+//one time initialisation of both WFG and real functions
 static void __attribute__((constructor)) dd_init(void)
 {
-    init_wfg();              /* spin-lock + empty lists           */
+    init_wfg();              
 }
 
-/* ------------------------------------------------- */
 static void resolve_real_symbols(void)
 {
     if (!real_pthread_mutex_lock) {
@@ -63,27 +58,27 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
     pthread_t self = pthread_self();
     int try_result = pthread_mutex_trylock(mutex);
 
-    if (try_result == 0) {                         /* fast-path acquire */
+    if (try_result == 0) {                         //fast-path acquire
         record_thread_owns_mutex(self, mutex);
         return 0;
     }
-    if (try_result == EBUSY) {                     /* would block → wait edge */
+    if (try_result == EBUSY) {   // mutex is busy, we might block
         record_thread_waiting_on_mutex(self, mutex);
 
-        if (check_for_deadlock(self)) {            /* cycle? abort */
+        if (check_for_deadlock(self)) {            //cycle detection
             fprintf(stderr, "Deadlock: thread %lu waiting on mutex %p\n",
                     (unsigned long)self, (void *)mutex);
             exit(1);
         }
 
-        /* safe to block */
+        //safe to block, so we call the real function
         int real_result = real_pthread_mutex_lock(mutex);
 
         clear_thread_waiting(self);
         record_thread_owns_mutex(self, mutex);
         return real_result;
     }
-    return try_result;                             /* other error code */
+    return try_result;                             
 }
 
 int pthread_mutex_unlock(pthread_mutex_t *mutex)
@@ -103,7 +98,7 @@ int sem_wait(sem_t *sem)
     pthread_t self = pthread_self();
     int sval;
 
-    /* optimistic check: if value ≤0, we’ll almost certainly block */
+    //if value <= 0, we’ll almost certainly block
     if (sem_getvalue(sem, &sval) == 0 && sval <= 0) {
         record_thread_waiting_on_semaphore(self, sem);
 
@@ -113,7 +108,7 @@ int sem_wait(sem_t *sem)
             exit(1);
         }
     }
-
+    // safe to block, so we call the real function
     int rc = real_sem_wait(sem);
 
     if (rc == 0) {

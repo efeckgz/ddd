@@ -4,19 +4,18 @@
 #include <semaphore.h>
 #include <unistd.h>
 
-/* binary semaphores (initial value = 1) */
+
 static sem_t semA;
 static sem_t semB;
 
-/* ---------- workload ---------- */
 static void* th1(void* arg)
 {
-    sem_wait(&semA);                         /* take A  */
+    sem_wait(&semA);                         
     printf("T1 took  semA\n");
-    sleep(1);                                /* pretend work */
+    sleep(1);                                
 
     printf("T1 trying semB\n");
-    sem_wait(&semB);                         /* will dead-lock here */
+    sem_wait(&semB);//will deadlocked here
     printf("T1 took  semB  (won’t print without preload)\n");
 
     sem_post(&semB);
@@ -26,12 +25,12 @@ static void* th1(void* arg)
 
 static void* th2(void* arg)
 {
-    sem_wait(&semB);                         /* take B  */
+    sem_wait(&semB);                         
     printf("T2 took  semB\n");
     sleep(1);
 
     printf("T2 trying semA\n");
-    sem_wait(&semA);                         /* circular wait */
+    sem_wait(&semA);  //circular wait here
     printf("T2 took  semA  (won’t print without preload)\n");
 
     sem_post(&semA);
@@ -39,7 +38,6 @@ static void* th2(void* arg)
     return NULL;
 }
 
-/* ---------- main ---------- */
 int main(void)
 {
     sem_init(&semA, 0, 1);

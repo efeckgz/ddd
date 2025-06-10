@@ -1,25 +1,20 @@
-/* -------------------------------------------------
- *  src/wfg.c   –  Wait-For Graph implementation
- * ------------------------------------------------- */
-#define _GNU_SOURCE           /* ensure spin-lock APIs are visible */
+#define _GNU_SOURCE 
 
 #include "../lib/wfg.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* ---------- global graph state ---------- */
+//global graph state
 static ThreadNode   *thread_list_head   = NULL;
 static ResourceNode *resource_list_head = NULL;
 static pthread_spinlock_t graph_lock;
 
-/* ------------------------------------------------- */
 void init_wfg(void)
 {
     pthread_spin_init(&graph_lock, PTHREAD_PROCESS_PRIVATE);
 }
 
-/* ---------- tiny helpers ---------- */
 static inline int resource_id_equal(ResourceId a, ResourceId b)
 {
     return a.type == b.type && a.resource_ptr == b.resource_ptr;
@@ -40,7 +35,7 @@ static ResourceNode *get_or_create_resource(ResourceId rid)
     return n;
 }
 
-/* ------------------------------------------------- */
+
 ThreadNode *get_or_create_thread(pthread_t tid)
 {
     // pthread_spin_lock(&graph_lock);
@@ -70,9 +65,7 @@ void clear_thread_waiting(pthread_t tid)
     pthread_spin_unlock(&graph_lock);
 }
 
-/* =================================================
- *                MUTEX HELPERS
- * ================================================= */
+//mutex helpers
 void record_thread_waiting_on_mutex(pthread_t tid, pthread_mutex_t *m)
 {
     pthread_spin_lock(&graph_lock);
@@ -123,9 +116,7 @@ void clear_thread_owns_mutex(pthread_t tid, pthread_mutex_t *m)
     pthread_spin_unlock(&graph_lock);
 }
 
-/* =================================================
- *             SEMAPHORE HELPERS
- * ================================================= */
+//semaphore helpers
 void record_thread_waiting_on_semaphore(pthread_t tid, sem_t *s)
 {
     pthread_spin_lock(&graph_lock);
@@ -176,21 +167,19 @@ void clear_thread_owns_semaphore(pthread_t tid, sem_t *s)
 
     pthread_spin_unlock(&graph_lock);
 }
-/* =================================================
- *                CYCLE DETECTION
- * ================================================= */
+
+//cycle detection
 static int check_cycle_dfs(ThreadNode *t,
                            ThreadNode **stack,
                            size_t depth)
 {
-    /* already on recursion stack ⇒ cycle */
+    //already on recursion stack
     for (size_t i = 0; i < depth; ++i)
         if (stack[i] == t)
             return 1;
 
-    stack[depth] = t;                         /* push */
+    stack[depth] = t;                         
 
-    /* follow edge: thread ─► waiting_for ─► owner */
     if (t->waiting_for.type != -1) {
         ResourceNode *r = resource_list_head;
         while (r) {
@@ -211,27 +200,25 @@ static int check_cycle_dfs(ThreadNode *t,
             r = r->next;
         }
     }
-    /* pop */
+    
     return 0;
 }
 
 int check_for_deadlock(pthread_t tid)
 {
-    /* take a consistent snapshot under the spin-lock */
+    // take a consistent snapshot under the spin-lock
     pthread_spin_lock(&graph_lock);
 
     ThreadNode *start = thread_list_head;
     while (start && !pthread_equal(start->thread, tid))
         start = start->next;
 
-    if (!start) {                     /* shouldn’t happen */
+    if (!start) {
         pthread_spin_unlock(&graph_lock);
         return 0;
     }
 
-    /* recursion stack – bounded by #threads in graph */
-    /* (graph is small; we can allocate on the stack)  */
-    ThreadNode *stack[256];           /* adjust if you expect >256 threads */
+    ThreadNode *stack[256];
 
     int cycle = check_cycle_dfs(start, stack, 0);
 
